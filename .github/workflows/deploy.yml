@@ -74,4 +74,4 @@ jobs:
             echo "Esperando que la aplicación inicie..."
             sleep 30
 
-            echo "Deploy working
+            echo "Deploy working"
