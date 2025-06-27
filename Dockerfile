@@ -8,37 +8,35 @@ WORKDIR /app
 COPY pom.xml .
 COPY src ./src
 
-# Compilar aplicación
-RUN mvn clean package -DskipTests
+# Compilar aplicación (con verificación)
+RUN mvn clean package -DskipTests && \
+    ls -la /app/target/ # Verificación de archivos generados
 
 # Imagen final más liviana
 FROM eclipse-temurin:17-jre-alpine
 
-# Instalar utilidades necesarias
-RUN apk add --no-cache shadow \
- && getent group appuser || groupadd -r appuser \
- && id -u appuser &>/dev/null || useradd -r -g appuser appuser
+# Crear usuario y grupo no-root
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 # Directorio de trabajo
 WORKDIR /app
 
-# Copiar JAR desde la etapa de build
-COPY --from=build /app/target/serv_usuario-*.jar app.jar
+# Copiar JAR con nombre explícito y permisos
+COPY --from=build --chown=appuser:appuser /app/target/serv_usuario-*.jar ./app.jar
 
-# Asignar permisos al usuario no-root
-RUN chown -R appuser:appuser /app
-
-# Cambiar a usuario no-root
-USER appuser
-
-# Puerto que expone la aplicación
-EXPOSE 8080
+# Verificar que el JAR existe y tiene permisos correctos
+RUN ls -la /app && \
+    echo "JAR size: $(du -h app.jar)" && \
+    java -version
 
 # Variables de entorno para JVM
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
 
+# Puerto que expone la aplicación
+EXPOSE 8080
 
+# Usuario no-root
+USER appuser
 
-# Comando para ejecutar la aplicación
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]
-
+# Comando para ejecutar la aplicación (con ruta absoluta)
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -jar /app/app.jar"]
