@@ -77,7 +77,7 @@
 	</dependencies>
 
 	<build>
-	    <finalName>serv_usuario</finalName>
+
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
