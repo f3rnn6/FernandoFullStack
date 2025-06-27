@@ -48,14 +48,14 @@ jobs:
           key: ${{ secrets.SSH_USERNAME }}
           port: 22
           source: "./*"
-          target: "/home/${{ secrets.SSH_USERNAME }}/usuarios-app/"
+          target: "/home/${{ secrets.USER_USERNAME }}/usuarios-app/"
           rm: true
 
       - name: Deploy with Docker
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.USER_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
+          username: ${{ secrets.USER_USERNAME }}
           key: ${{ secrets.SSH_USERNAME }}
           port: 22
           script: |
