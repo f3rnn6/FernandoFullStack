@@ -1,0 +1,77 @@
+name: Deploy Java App with Docker
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.USER_HOST }}
+          username: ${{ secrets.USER_USERNAME }}
+          key: ${{ secrets.SSH_USERNAME }}
+          port: 22
+          script: |
+            # Verificar si Docker está instalado
+            if ! command -v docker &> /dev/null; then
+              echo "Instalando Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker $USER
+              rm get-docker.sh
+            fi
+            
+            # Verificar si Docker Compose está instalado
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Instalando Docker Compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+            
+            # Crear directorio del proyecto
+            mkdir -p ~/usuarios-app
+            cd ~/usuarios-app
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.USER_HOST }}
+          username: ${{ secrets.USER_USERNAME }}
+          key: ${{ secrets.SSH_USERNAME }}
+          port: 22
+          source: "./*"
+          target: "/home/${{ secrets.SSH_USERNAME }}/usuarios-app/"
+          rm: true
+
+      - name: Deploy with Docker
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.USER_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_USERNAME }}
+          port: 22
+          script: |
+            cd ~/usuarios-app
+            
+            # Detener contenedores existentes
+            docker-compose down || true
+            
+            # Limpiar imágenes anteriores
+            docker system prune -f
+            
+            # Construir y levantar aplicación
+            docker-compose up -d --build
+            
+            # Esperar que la aplicación esté lista
+            echo "Esperando que la aplicación inicie..."
+            sleep 30
+
+            echo "Deploy working
