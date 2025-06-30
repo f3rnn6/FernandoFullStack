@@ -14,7 +14,7 @@ public class UserClient {
     
     public UserClient(WebClient.Builder webClientBuilder) {
         this.webClient = webClientBuilder
-            .baseUrl("http://34.226.84.78:8089/apiFernando/v1.0/User/TraerPorId/{id}")
+            .baseUrl("http://34.226.84.78:8080/apiFernando/v1.0/User/TraerPorId/{id}")
             .build();
     }
     public userDTO obtenerUsuarioPorId(Long id) {
