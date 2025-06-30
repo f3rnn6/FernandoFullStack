@@ -26,12 +26,19 @@ public class prestamoService {
                 .toList();
     }
 
-    public prestamo agregarPrestamo(prestamo newPrestamo) {
-        if (userClient.obtenerUsuarioPorId(newPrestamo.getUserId()) != null) {
-            return prestamoRepo.save(newPrestamo);
-        } else {
-            throw new RuntimeException("Usuario no encontrado");
+   public prestamo agregarPrestamo(prestamo newPrestamo) {
+        // Validación básica
+        if (newPrestamo.getUserId() == null) {
+            throw new IllegalArgumentException("El ID de usuario es requerido");
         }
+
+        // Verifica existencia del usuario
+        if (!userClient.existeUsuario(newPrestamo.getUserId())) {
+            throw new RuntimeException("No existe usuario con ID: " + newPrestamo.getUserId());
+        }
+
+        // Guarda el préstamo
+        return prestamoRepo.save(newPrestamo);
     }
     public void eliminarPrestamo(Long id) {
         prestamoRepo.deleteById(id);
