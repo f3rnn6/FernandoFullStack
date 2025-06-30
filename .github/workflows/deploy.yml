@@ -1,0 +1,98 @@
+name: Deploy Java App with Docker
+
+on:
+  push:
+    branches: [ ramaFena ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+       
+      - name: Setup SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_PRESTAMO }}
+          username: ${{ secrets.USER_PRESTAMO }}  # ⚠️ CORREGIDO: era USER_USUARIOS
+          key: ${{ secrets.SSH_KEY_PRESTAMO }}
+          port: 22
+          script: |
+            # Verificar espacio en disco ANTES de proceder
+            df -h
+            if [ $(df / | tail -1 | awk '{print $5}' | sed 's/%//') -gt 80 ]; then
+              echo "⚠️ Advertencia: Espacio en disco mayor al 80%"
+              # Limpiar logs del sistema
+              sudo journalctl --vacuum-time=1d
+              # Limpiar cache de apt
+              sudo apt-get clean
+            fi
+            
+            # Verificar si Docker está instalado
+            if ! command -v docker &> /dev/null; then
+              echo "Instalando Docker..."
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker $USER
+              rm get-docker.sh
+            fi
+                     
+            # Verificar si Docker Compose está instalado
+            if ! command -v docker-compose &> /dev/null; then
+              echo "Instalando Docker Compose..."
+              sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+                     
+            # Crear directorio del proyecto
+            mkdir -p ~/prestamo-app
+            cd ~/prestamo-app
+
+      - name: Copy files to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.HOST_PRESTAMO }}
+          username: ${{ secrets.USER_PRESTAMO }}
+          key: ${{ secrets.SSH_KEY_PRESTAMO }}
+          port: 22
+          source: "./*"
+          target: "/home/${{ secrets.USER_PRESTAMO }}/prestamo-app/"
+          rm: true
+
+      - name: Deploy with Docker
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST_PRESTAMO }}
+          username: ${{ secrets.USER_PRESTAMO }}
+          key: ${{ secrets.SSH_KEY_PRESTAMO }}
+          port: 22
+          script: |
+            cd ~/prestamo-app
+                     
+            # Detener contenedores existentes
+            docker-compose down || true
+                     
+            # LIMPIEZA AGRESIVA para evitar problemas de espacio
+            echo "🧹 Limpiando Docker..."
+            docker system prune -af --volumes
+            docker image prune -af
+            
+            # Verificar espacio después de limpieza
+            echo "📊 Espacio disponible:"
+            df -h /
+                     
+            # Construir y levantar aplicación
+            echo "🚀 Iniciando construcción..."
+            docker-compose up -d --build
+                     
+            # Verificar que el contenedor esté corriendo
+            echo "✅ Verificando contenedores:"
+            docker ps
+            
+            # Verificar logs por si hay errores
+            echo "📋 Logs recientes:"
+            docker-compose logs --tail=20
+                     
+            echo "🚀 Despliegue completado exitosamente"
