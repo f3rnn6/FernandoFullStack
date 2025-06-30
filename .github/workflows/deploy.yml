@@ -2,7 +2,7 @@ name: Deploy Java App with Docker
 
 on:
   push:
-    branches: [ ramaFena ]
+    branches: [ ramaFenaPrestamo ]
 
 jobs:
   deploy:
